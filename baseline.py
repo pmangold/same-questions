@@ -1,9 +1,30 @@
+# encoding=utf8  
+import sys  
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
 import numpy as np
+import unidecode
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+import nltk.corpus
+import nltk.tokenize.punkt
+import string
+from nltk.stem.snowball import SnowballStemmer
+
+#nltk.download('stopwords')
+
+stemmer = SnowballStemmer("english")
+stopwords = nltk.corpus.stopwords.words('english')
+stopwords.extend(string.punctuation)
+stopwords.append('')
+
+save = False
 
 texts = {}
 pairs_train = []
@@ -85,11 +106,23 @@ def loss(y, p):
     return l / N
 
 
+def preprocess_line(line, stemmer = stemmer):
+    line = line.lower().translate(None, string.punctuation)
+    l = " ".join(map(stemmer.stem, line.split(" ")))
+    
+    return l
+
+def preprocess_texts(texts):
+    for i in texts.keys():
+        texts[i] = preprocess_line(texts[i])
+
 texts = {}
-nb_lines = 1000
+nb_lines = None
 pairs_train, y_train = read_csv(train_path, texts, nb_lines = nb_lines)
 pairs_test = read_csv(test_path, texts, labelled = False, nb_lines = nb_lines)
-    
+
+preprocess_texts(texts)
+ 
 ids2ind, A = tfidf(texts)
 
 N_train, X_train = compute_features(pairs_train, A, ids2ind)
@@ -100,8 +133,9 @@ clf = RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
 clf.fit(X_train, y_train)
 y_pred = clf.predict_proba(X_test)
 
-save_submission(sub_path, y_pred)
+if save:
+    save_submission(sub_path, y_pred)
 
 y_pred_train = clf.predict_proba(X_train)[:, 1]
 
-print "Score: ", loss(y_train, y_pred_train)
+print("Score: ", loss(y_train, y_pred_train))
