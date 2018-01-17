@@ -14,8 +14,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import make_scorer
 
-import nltk.corpus
-import nltk.tokenize.punkt
 import string
 from nltk.stem.snowball import SnowballStemmer
 
@@ -25,6 +23,7 @@ stemmer = SnowballStemmer("english")
 stopwords = nltk.corpus.stopwords.words('english')
 stopwords.extend(string.punctuation)
 stopwords.append('')
+stopwords = map(str, stopwords)
 
 save = False
 
@@ -107,12 +106,16 @@ def loss(y, p):
             l -= np.log(p[i][1])
     return l / N
 
+def preprocess_line(line, stemmer = stemmer, stopwords = stopwords):
+    strip_punct = string.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    line = line.lower().translate(strip_punct)
 
-def preprocess_line(line, stemmer = stemmer):
-    line = line.lower().translate(None, string.punctuation)
+    l = line.split(" ")
+    l = [w for w in l if w not in stopwords]
     l = " ".join(map(stemmer.stem, line.split(" ")))
     
     return l
+
 
 def preprocess_texts(texts):
     for i in texts.keys():
@@ -161,5 +164,4 @@ y_pred = clf.predict_proba(X_test)
 if save:
     save_submission(sub_path, y_pred)
 
-print compute_score(clf, X_train, y_train)
 print_score(clf, X_train, y_train)
