@@ -162,4 +162,4 @@ if save:
     save_submission(sub_path, y_pred)
 
 print compute_score(clf, X_train, y_train)
-print print_score(clf, X_train, y_train)
+print_score(clf, X_train, y_train)
