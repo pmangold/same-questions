@@ -11,6 +11,8 @@ from sklearn.linear_model import LinearRegression
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import make_scorer
 
 import nltk.corpus
 import nltk.tokenize.punkt
@@ -100,9 +102,9 @@ def loss(y, p):
     l = 0
     for i in range(N):
         if y[i] == 0:
-            l -= np.log(1 - p[i])
+            l -= np.log(1 - p[i][1])
         else:
-            l -= np.log(p[i])
+            l -= np.log(p[i][1])
     return l / N
 
 
@@ -116,8 +118,31 @@ def preprocess_texts(texts):
     for i in texts.keys():
         texts[i] = preprocess_line(texts[i])
 
+def compute_score(clf, X, y):
+    scorer = make_scorer(loss, greater_is_better = True, needs_proba = True)
+    return scorer(clf, X, y)
+
+def compute_cv_score(clf, X, y, cv = 5):
+    scorer = make_scorer(loss, greater_is_better = True, needs_proba = True)
+    return cross_val_score(clf, X, y = y, scoring = scorer, n_jobs = -1, cv = cv)
+
+def print_score(clf, X, y, cv = 5):
+    cv_scores = compute_cv_score(clf, X, y, cv = cv)
+
+    print "CV Fold\t\tScore"
+    for i in range(cv):
+        s = "   " + str(i) + "\t\t" + str('%0.2f' % cv_scores[i])
+        print s
+
+    print
+    print "Mean score: " + str('%0.2f' % np.mean(cv_scores))
+
+
+
+
+
 texts = {}
-nb_lines = None
+nb_lines = 100
 pairs_train, y_train = read_csv(train_path, texts, nb_lines = nb_lines)
 pairs_test = read_csv(test_path, texts, labelled = False, nb_lines = nb_lines)
 
@@ -136,6 +161,5 @@ y_pred = clf.predict_proba(X_test)
 if save:
     save_submission(sub_path, y_pred)
 
-y_pred_train = clf.predict_proba(X_train)[:, 1]
-
-print("Score: ", loss(y_train, y_pred_train))
+print compute_score(clf, X_train, y_train)
+print print_score(clf, X_train, y_train)
