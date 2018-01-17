@@ -12,6 +12,7 @@ y_train = []
 
 train_path = 'train.csv'
 test_path = 'test.csv'
+sub_path = 'submissions.csv'
 
 def read_csv(path, texts, nb_lines = None, labelled = True):
     pairs = []
@@ -53,44 +54,26 @@ def tfidf(texts):
 
     return ids2ind, A
 
-texts = {}
-nb_lines = 1000
-pairs_train, y_train = read_csv(train_path, texts, nb_lines = nb_lines)
-pairs_test = read_csv(test_path, texts, labelled = False, nb_lines = nb_lines)
-    
-ids2ind, A = tfidf(texts)
+def compute_features(pairs, A, ids2ind):
+    N = len(pairs)
+    X = np.zeros((N, 3))
+    for i in range(len(pairs)):
+        q1 = pairs[i][0]
+        q2 = pairs[i][1]
+        X[i,0] = cosine_similarity(A[ids2ind[q1],:], A[ids2ind[q2],:])
+        X[i,1] = len(texts[q1].split()) + len(texts[q2].split())
+        X[i,2] = abs(len(texts[q1].split()) - len(texts[q2].split()))
 
+    return N, X
 
-N_train = len(pairs_train)
-X_train = np.zeros((N_train, 3))
-for i in range(len(pairs_train)):
-    q1 = pairs_train[i][0]
-    q2 = pairs_train[i][1]
-    X_train[i,0] = cosine_similarity(A[ids2ind[q1],:], A[ids2ind[q2],:])
-    X_train[i,1] = len(texts[q1].split()) + len(texts[q2].split())
-    X_train[i,2] = abs(len(texts[q1].split()) - len(texts[q2].split()))
+def save_submission(sub_path, y):
+    with open(sub_path, 'w') as f:
+        f.write("Id,Score\n")
+        for i in range(y_pred.shape[0]):
+            f.write(str(i)+','+str(y_pred[i][1])+'\n')
 
-
-N_test = len(pairs_test)
-X_test = np.zeros((N_test, 3))
-for i in range(len(pairs_test)):
-    q1 = pairs_test[i][0]
-    q2 = pairs_test[i][1]
-    X_test[i,0] = cosine_similarity(A[ids2ind[q1],:], A[ids2ind[q2],:])
-    X_test[i,1] = len(texts[q1].split()) + len(texts[q2].split())
-    X_test[i,2] = abs(len(texts[q1].split()) - len(texts[q2].split()))
-
-clf = RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
-clf.fit(X_train, y_train)
-y_pred = clf.predict_proba(X_test)
-
-with open("submission_file.csv", 'w') as f:
-    f.write("Id,Score\n")
-    for i in range(y_pred.shape[0]):
-        f.write(str(i)+','+str(y_pred[i][1])+'\n')
-
-y_pred_train = clf.predict_proba(X_train)[:, 1]
-
+        
+        
 def loss(y, p):
     N = y.shape[0]
     l = 0
@@ -100,5 +83,25 @@ def loss(y, p):
         else:
             l -= np.log(p[i])
     return l / N
+
+
+texts = {}
+nb_lines = 1000
+pairs_train, y_train = read_csv(train_path, texts, nb_lines = nb_lines)
+pairs_test = read_csv(test_path, texts, labelled = False, nb_lines = nb_lines)
+    
+ids2ind, A = tfidf(texts)
+
+N_train, X_train = compute_features(pairs_train, A, ids2ind)
+N_test, X_test = compute_features(pairs_test, A, ids2ind)
+
+
+clf = RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
+clf.fit(X_train, y_train)
+y_pred = clf.predict_proba(X_test)
+
+save_submission(sub_path, y_pred)
+
+y_pred_train = clf.predict_proba(X_train)[:, 1]
 
 print "Score: ", loss(y_train, y_pred_train)
