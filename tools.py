@@ -133,15 +133,18 @@ stopwords = map(str, stopwords)
 def preprocess_line(line, stemmer = stemmer, stopwords = stopwords, lower = True, stem = True):
     strip_punct = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
     line = line.lower().translate(strip_punct)
-
+    
     if stem == True:
         l = line.split(" ")
         l = [w for w in l if w not in stopwords]
         l = " ".join(map(stemmer.stem, line.split(" ")))
-    
+    else:
+        l = line
+        
     return l
 
 
-def preprocess_texts(texts):
+def preprocess_texts(texts, lower = True, stem = True):
     for i in texts.keys():
-        texts[i] = preprocess_line(texts[i]) 
+        texts[i] = preprocess_line(texts[i], lower = lower, stem = stem)
+        
