@@ -5,6 +5,11 @@ from sklearn.metrics import make_scorer
 import numpy as np
 
 
+import string
+import nltk
+from nltk.stem.snowball import SnowballStemmer
+
+# function to compute score
 def loss(y, p):
     N = y.shape[0]
     l = 0
@@ -34,6 +39,8 @@ def compute_cv_score(clf, X, y, cv = 5):
     
     return scores
 
+
+# function to print score
 def print_line(text, acc, loss, number = True):
     if number:
         acc = '%0.2f' % acc
@@ -60,19 +67,22 @@ def print_score(clf, X, y, cv = 5):
     print(color.BOLD + color.YELLOW + "Bagged scores" + color.END)
     print_line("train", np.mean(cv_scores['train_acc']), np.mean(cv_scores['train_loss'][i]))
     print_line("test", np.mean(cv_scores['test_acc']), np.mean(cv_scores['test_loss']))
-    
+
+
+# function to save submission
 def save_submission(sub_path, y):
     with open(sub_path, 'w') as f:
         f.write("Id,Score\n")
         for i in range(y.shape[0]):
             f.write(str(i)+','+str(y[i][1])+'\n')
 
+# read data
 def read_csv(path, texts, nb_lines = None, labelled = True):
     pairs = []
     y = []
     read_lines = 0
     
-    with open(path,'r') as f:
+    with open(path,'r', encoding="utf8") as f:
         for line in f:
             if nb_lines != None and read_lines >= nb_lines:
                 break
@@ -109,3 +119,28 @@ class color:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'
+
+
+
+# preprocess text
+stemmer = SnowballStemmer("english")
+stopwords = nltk.corpus.stopwords.words('english')
+stopwords.extend(string.punctuation)
+stopwords.append('')
+stopwords = map(str, stopwords)
+
+def preprocess_line(line, stemmer = stemmer, stopwords = stopwords, lower = True, stem = True):
+    strip_punct = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    line = line.lower().translate(strip_punct)
+
+    if stem == True:
+        l = line.split(" ")
+        l = [w for w in l if w not in stopwords]
+        l = " ".join(map(stemmer.stem, line.split(" ")))
+    
+    return l
+
+
+def preprocess_texts(texts):
+    for i in texts.keys():
+        texts[i] = preprocess_line(texts[i]) 
