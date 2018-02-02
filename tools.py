@@ -72,7 +72,7 @@ def read_csv(path, texts, nb_lines = None, labelled = True):
     y = []
     read_lines = 0
     
-    with open(path,'r') as f:
+    with open(path,'r', encoding = 'utf8') as f:
         for line in f:
             if nb_lines != None and read_lines >= nb_lines:
                 break
